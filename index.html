@@ -146,7 +146,7 @@
         <div class="list-container" id="questionList"></div>
     </div>
 
-    <script>
+<script>
         let seconds = 0;
         let timerInterval = null;
         let isRunning = false;
@@ -297,6 +297,7 @@
         const donutLabel = document.getElementById('donutLabel');
         
         let checkedItems = JSON.parse(localStorage.getItem('dp700_progress_v3')) || {};
+        let savedNotes = JSON.parse(localStorage.getItem('dp700_notes_v3')) || {};
 
         function updateProgress() {
             let totalOverall = 0;
@@ -333,6 +334,11 @@
             saveAndSync();
         }
 
+        window.saveNote = function(qKey, text) {
+            savedNotes[qKey] = text;
+            localStorage.setItem('dp700_notes_v3', JSON.stringify(savedNotes));
+        }
+
         function saveAndSync() {
             localStorage.setItem('dp700_progress_v3', JSON.stringify(checkedItems));
             render();
@@ -349,25 +355,30 @@
 
             const currentQuestions = masterData[sourceValue][topicValue] || [];
             list.innerHTML = currentQuestions
-                .filter(item => `Question ${item.q}`.toLowerCase().includes(searchTerm))
+                .filter(item => `Question ${item.q}`.toLowerCase().includes(searchTerm) || (savedNotes[`${sourceValue}_${topicValue}_Q${item.q}`] || "").toLowerCase().includes(searchTerm))
                 .map(item => {
                     const qKey = `${sourceValue}_${topicValue}_Q${item.q}`;
                     const isActive = checkedItems[qKey] ? 'active' : '';
+                    const currentNote = savedNotes[qKey] || "";
+
                     return `
                         <div class="list-item">
                             <div class="check-btn ${isActive}" onclick="toggleCheck('${qKey}', event)"></div>
-                            <a href="${item.url}" target="_blank" class="q-link">
+                            <a href="${item.url}" target="_blank" class="q-link" style="flex: 0 0 120px;">
                                 <span class="q-id">QUESTION ${item.q}</span>
-                                <span style="font-size: 13px; opacity: 0.8; flex: 1;">Verified discussion stream</span>
-                                <span class="go-icon">→</span>
                             </a>
+                            <input type="text" 
+                                   value="${currentNote}" 
+                                   placeholder="Click to add description..." 
+                                   oninput="saveNote('${qKey}', this.value)"
+                                   style="background: transparent; border: none; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--silver); flex: 1; padding: 5px; font-family: var(--font-din); outline: none; margin: 0 15px;">
+                            <span class="go-icon">→</span>
                         </div>
                     `;
                 }).join('');
             updateProgress();
         }
 
-        // HARDWARE TIMER LOGIC (GLASS BLEND)
         function toggleTimer() {
             const btn = document.getElementById('startPauseBtn');
             if (!isRunning) {
@@ -413,6 +424,8 @@
         window.resetAll = function() {
             if (confirm("Permanently wipe all course progress data?")) {
                 checkedItems = {};
+                savedNotes = {};
+                localStorage.removeItem('dp700_notes_v3');
                 saveAndSync();
             }
         }
